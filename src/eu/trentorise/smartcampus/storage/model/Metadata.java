@@ -16,7 +16,6 @@
 
 package eu.trentorise.smartcampus.storage.model;
 
-
 /**
  * <i>Metadata</i> represents all the informations about a resource
  * 
@@ -37,7 +36,7 @@ public class Metadata {
 	/**
 	 * entity id binded to resource
 	 */
-	private String eid;
+	private String socialId;
 
 	private String fileExternalId;
 
@@ -54,6 +53,11 @@ public class Metadata {
 	 * MIME type of resource
 	 */
 	private String contentType;
+
+	/**
+	 * resource size in bytes
+	 */
+	private long size;
 
 	/**
 	 * creation time
@@ -81,12 +85,12 @@ public class Metadata {
 		this.rid = rid;
 	}
 
-	public String getEid() {
-		return eid;
+	public String getSocialId() {
+		return socialId;
 	}
 
-	public void setEid(String eid) {
-		this.eid = eid;
+	public void setSocialId(String eid) {
+		this.socialId = eid;
 	}
 
 	public String getContentType() {
@@ -143,6 +147,14 @@ public class Metadata {
 
 	public void setAppName(String appName) {
 		this.appName = appName;
+	}
+
+	public long getSize() {
+		return size;
+	}
+
+	public void setSize(long size) {
+		this.size = size;
 	}
 
 }

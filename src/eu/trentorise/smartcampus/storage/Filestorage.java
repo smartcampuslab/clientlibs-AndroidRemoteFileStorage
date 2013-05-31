@@ -46,11 +46,12 @@ import eu.trentorise.smartcampus.storage.model.Token;
 import eu.trentorise.smartcampus.storage.model.UserAccount;
 
 /**
- * This class provides an interface to access the remote file storage functionaty:
- * CRUD on resources (files), CRD on user account and reading the app accounts.
+ * This class provides an interface to access the remote file storage
+ * functionaty: CRUD on resources (files), CRD on user account and reading the
+ * app accounts.
  * 
  * @author raman
- *
+ * 
  */
 public class Filestorage {
 
@@ -60,7 +61,7 @@ public class Filestorage {
 	private String appToken;
 	private String host;
 	private String service;
-	
+
 	/** Input parameter key: appname */
 	public static final String EXTRA_INPUT_APPNAME = "eu.trentorise.smartcampus.storage.APPNAME";
 	/** Input parameter: apptoken */
@@ -91,13 +92,15 @@ public class Filestorage {
 	/**
 	 * Create a new Filestorage service connector, given the execution context,
 	 * app name, app token, remote service host and service context path
+	 * 
 	 * @param ctx
 	 * @param appName
 	 * @param appToken
 	 * @param host
 	 * @param service
 	 */
-	public Filestorage(Context ctx, String appName, String appToken, String host, String service) {
+	public Filestorage(Context ctx, String appName, String appToken,
+			String host, String service) {
 		mCtx = ctx;
 		mProtocolCarrier = new ProtocolCarrier(mCtx, appToken);
 		this.appName = appName;
@@ -107,34 +110,33 @@ public class Filestorage {
 	}
 
 	/**
-	 * Start the storage authentication to create the user account. Returns the intent
-	 * containing the {@link AuthActivity#EXTRA_OUTPUT_USERACCOUNT} parameter with 
-	 * {@link UserAccount} object in case of successful authentication or 
-	 * one of {@link Activity#RESULT_CANCELED}, {@link AuthActivity#RESULT_SC_CONNECTION_ERROR},
-	 * {@link AuthActivity#RESULT_SC_PROTOCOL_ERROR}, {@link AuthActivity#RESULT_SC_SECURITY_ERROR}
-	 * response codes.
+	 * Start the storage authentication to create the user account. Returns the
+	 * intent containing the {@link AuthActivity#EXTRA_OUTPUT_USERACCOUNT}
+	 * parameter with {@link UserAccount} object in case of successful
+	 * authentication or one of {@link Activity#RESULT_CANCELED},
+	 * {@link AuthActivity#RESULT_SC_CONNECTION_ERROR},
+	 * {@link AuthActivity#RESULT_SC_PROTOCOL_ERROR},
+	 * {@link AuthActivity#RESULT_SC_SECURITY_ERROR} response codes.
+	 * 
 	 * @param activity
 	 * @param authToken
 	 * @param appAccountName
 	 * @param appAccountId
-	 * @param storageType storage type
-	 * @param requestCode 
+	 * @param storageType
+	 *            storage type
+	 * @param requestCode
 	 * 
 	 */
-	public void startAuthActivityForResult(Activity activity, String authToken, String appAccountName, String appAccountId, StorageType storageType, int requestCode) {
-		if (appName == null || appAccountName == null || appAccountId == null || storageType == null || authToken == null) 
+	public void startAuthActivityForResult(Activity activity, String authToken,
+			String appAccountName, String appAccountId,
+			StorageType storageType, int requestCode) {
+		if (appName == null || appAccountName == null || appAccountId == null
+				|| storageType == null || authToken == null)
 			throw new IllegalArgumentException(
 					"Intent MUST have setted authToken, appname, accountName, appAccountId,storageType extras");
 
-		Intent intent = createIntent(activity,
-				appName,
-				appToken,
-				authToken,
-				appAccountName,
-				appAccountId,
-				storageType,
-				host,
-				service);
+		Intent intent = createIntent(activity, appName, appToken, authToken,
+				appAccountName, appAccountId, storageType, host, service);
 
 		switch (storageType) {
 		case DROPBOX:
@@ -143,46 +145,56 @@ public class Filestorage {
 			activity.startActivityForResult(intent, requestCode);
 			break;
 		default:
-			throw new UnsupportedOperationException("Unsupported storage type: "+storageType);
+			throw new UnsupportedOperationException(
+					"Unsupported storage type: " + storageType);
 		}
 	}
-	
+
 	/**
 	 * Store resource remotely.
-	 * @param content byte array of the file content
-	 * @param contentType file MIME type
-	 * @param resourceName name of the file
+	 * 
+	 * @param content
+	 *            byte array of the file content
+	 * @param contentType
+	 *            file MIME type
+	 * @param resourceName
+	 *            name of the file
 	 * @param authToken
-	 * @param userAccountId user account ID
-	 * @return ID of the created resource.
+	 * @param userAccountId
+	 *            user account ID
+	 * @param createSocialData
+	 *            true to create social entity associated to the resource
+	 * @return information about created resource
 	 * @throws ProtocolException
 	 * @throws IOException
 	 * @throws ConnectionException
 	 * @throws SecurityException
 	 * @throws URISyntaxException
 	 */
-	public String storeResource(byte[] content, String contentType,
-			String resourceName, String authToken, String userAccountId)
-			throws ProtocolException, IOException, ConnectionException,
-			SecurityException, URISyntaxException {
-		MessageRequest request = new MessageRequest(
-				host, service + "/resource/"
-						+ appName + "/" + userAccountId);
+	public Metadata storeResource(byte[] content, String contentType,
+			String resourceName, String authToken, String userAccountId,
+			boolean createSocialData) throws ProtocolException, IOException,
+			ConnectionException, SecurityException, URISyntaxException {
+		MessageRequest request = new MessageRequest(host, service
+				+ "/resource/" + appName + "/" + userAccountId);
 		request.setMethod(Method.POST);
+		request.setQuery("createSocialData=" + createSocialData);
 		FileRequestParam fileParam = new FileRequestParam();
+
 		fileParam.setContent(content);
 		fileParam.setContentType(contentType);
 		fileParam.setFilename(resourceName);
 		fileParam.setParamName("file");
+
 		List<RequestParam> params = new ArrayList<RequestParam>();
 		params.add(fileParam);
 		request.setRequestParams(params);
-		request.setContentType(contentType);
 
 		MessageResponse response = mProtocolCarrier.invokeSync(request,
 				appToken, authToken);
 		if (response.getHttpStatus() == 200) {
-			return response.getBody();
+			return Utils
+					.convertJSONToObject(response.getBody(), Metadata.class);
 		} else {
 			return null;
 		}
@@ -190,9 +202,12 @@ public class Filestorage {
 
 	/**
 	 * Delete the specified resource
+	 * 
 	 * @param authToken
-	 * @param userAccountId user account ID
-	 * @param resourceId ID of the resource to be deleted.
+	 * @param userAccountId
+	 *            user account ID
+	 * @param resourceId
+	 *            ID of the resource to be deleted.
 	 * @throws ProtocolException
 	 * @throws ConnectionException
 	 * @throws SecurityException
@@ -200,9 +215,9 @@ public class Filestorage {
 	public void deleteResource(String authToken, String userAccountId,
 			String resourceId) throws ProtocolException, ConnectionException,
 			SecurityException {
-		MessageRequest request = new MessageRequest(
-				host, service + "/resource/"
-						+ appName + "/" + userAccountId + "/" + resourceId);
+		MessageRequest request = new MessageRequest(host, service
+				+ "/resource/" + appName + "/" + userAccountId + "/"
+				+ resourceId);
 		request.setMethod(Method.DELETE);
 
 		mProtocolCarrier.invokeSync(request, appToken, authToken);
@@ -211,9 +226,12 @@ public class Filestorage {
 	/**
 	 * 
 	 * @param authToken
-	 * @param userAccountId user account ID
-	 * @param resourceId ID of the resource to be deleted.
-	 * @param content byte array of the file content
+	 * @param userAccountId
+	 *            user account ID
+	 * @param resourceId
+	 *            ID of the resource to be deleted.
+	 * @param content
+	 *            byte array of the file content
 	 * @throws ProtocolException
 	 * @throws ConnectionException
 	 * @throws SecurityException
@@ -223,9 +241,9 @@ public class Filestorage {
 			ConnectionException, SecurityException {
 
 		Metadata meta = getResourceMetadata(authToken, resourceId);
-		MessageRequest request = new MessageRequest(
-				host, service + "/resource/"
-						+ appName + "/" + userAccountId + "/" + resourceId);
+		MessageRequest request = new MessageRequest(host, service
+				+ "/resource/" + appName + "/" + userAccountId + "/"
+				+ resourceId);
 		request.setMethod(Method.POST);
 		FileRequestParam fileParam = new FileRequestParam();
 		fileParam.setContent(content);
@@ -240,7 +258,9 @@ public class Filestorage {
 	}
 
 	/**
-	 * Read all the accounts associated to the specified user in the current app.
+	 * Read all the accounts associated to the specified user in the current
+	 * app.
+	 * 
 	 * @param authToken
 	 * @return
 	 * @throws ProtocolException
@@ -250,8 +270,8 @@ public class Filestorage {
 	public List<UserAccount> getUserAccounts(String authToken)
 			throws ProtocolException, ConnectionException, SecurityException {
 
-		MessageRequest request = new MessageRequest(
-				host, service + "/useraccount/" + appName);
+		MessageRequest request = new MessageRequest(host, service
+				+ "/useraccount/" + appName);
 		request.setMethod(Method.GET);
 
 		MessageResponse response = mProtocolCarrier.invokeSync(request,
@@ -266,17 +286,17 @@ public class Filestorage {
 
 	/**
 	 * Return all the accounts associated with the current app
+	 * 
 	 * @param authToken
 	 * @return
 	 * @throws ProtocolException
 	 * @throws ConnectionException
 	 * @throws SecurityException
 	 */
-	public List<AppAccount> getAppAccounts(String authToken) throws ProtocolException,
-			ConnectionException, SecurityException {
-		MessageRequest request = new MessageRequest(
-				host, service
-						+ "/appaccount/" + appName);
+	public List<AppAccount> getAppAccounts(String authToken)
+			throws ProtocolException, ConnectionException, SecurityException {
+		MessageRequest request = new MessageRequest(host, service
+				+ "/appaccount/" + appName);
 		request.setMethod(Method.GET);
 		MessageResponse response = mProtocolCarrier.invokeSync(request,
 				appToken, authToken);
@@ -290,6 +310,7 @@ public class Filestorage {
 
 	/**
 	 * Store the user account remotely
+	 * 
 	 * @param authToken
 	 * @param userAccount
 	 * @return
@@ -300,9 +321,8 @@ public class Filestorage {
 	public UserAccount storeUserAccount(String authToken,
 			UserAccount userAccount) throws ProtocolException,
 			ConnectionException, SecurityException {
-		MessageRequest request = new MessageRequest(
-				host, service
-						+ "/useraccount/" + appName);
+		MessageRequest request = new MessageRequest(host, service
+				+ "/useraccount/" + appName);
 		request.setMethod(Method.POST);
 		request.setBody(Utils.convertToJSON(userAccount));
 		MessageResponse response = mProtocolCarrier.invokeSync(request,
@@ -317,7 +337,8 @@ public class Filestorage {
 	}
 
 	/**
-	 * Read the file with the specified ID
+	 * Read the shared file with the specified ID
+	 * 
 	 * @param authToken
 	 * @param resourceId
 	 * @return the {@link Resource} object describing the remote file.
@@ -327,12 +348,36 @@ public class Filestorage {
 	 * @throws ClientProtocolException
 	 * @throws IOException
 	 */
-	public Resource getResource(String authToken, String resourceId)
+	public Resource getSharedResource(String authToken, String resourceId)
 			throws ProtocolException, ConnectionException, SecurityException,
 			ClientProtocolException, IOException {
-		MessageRequest request = new MessageRequest(
-				host, service + "/resource/"
-						+ appName + "/" + resourceId);
+		return getResource(authToken, resourceId, false);
+	}
+
+	/**
+	 * Reads a owned resource with specified ID
+	 * 
+	 * @param authToken
+	 * @param resourceId
+	 * @return the {@link Resource} object describing the remote file.
+	 * @throws ClientProtocolException
+	 * @throws ConnectionException
+	 * @throws ProtocolException
+	 * @throws SecurityException
+	 * @throws IOException
+	 */
+	public Resource getMyResource(String authToken, String resourceId)
+			throws ClientProtocolException, ConnectionException,
+			ProtocolException, SecurityException, IOException {
+		return getResource(authToken, resourceId, true);
+	}
+
+	private Resource getResource(String authToken, String resourceId,
+			boolean owned) throws ConnectionException, ProtocolException,
+			SecurityException, ClientProtocolException, IOException {
+		String functionality = owned ? "myresource" : "resource";
+		MessageRequest request = new MessageRequest(host, service + "/"
+				+ functionality + "/" + appName + "/" + resourceId);
 		request.setMethod(Method.GET);
 		MessageResponse response = mProtocolCarrier.invokeSync(request,
 				appToken, authToken);
@@ -347,7 +392,8 @@ public class Filestorage {
 		ResourceRetriever retriever = null;
 		switch (token.getStorageType()) {
 		case DROPBOX:
-			retriever = new HttpResourceRetriever(mCtx, appName, appToken, host, service);
+			retriever = new HttpResourceRetriever(mCtx, appName, appToken,
+					host, service);
 			break;
 
 		default:
@@ -360,6 +406,7 @@ public class Filestorage {
 
 	/**
 	 * Read the resource metadata.
+	 * 
 	 * @param authToken
 	 * @param resourceId
 	 * @return
@@ -369,9 +416,8 @@ public class Filestorage {
 	 */
 	public Metadata getResourceMetadata(String authToken, String resourceId)
 			throws ProtocolException, ConnectionException, SecurityException {
-		MessageRequest request = new MessageRequest(
-				host, service + "/metadata/"
-						+ appName + "/" + resourceId);
+		MessageRequest request = new MessageRequest(host, service
+				+ "/metadata/" + appName + "/" + resourceId);
 		request.setMethod(Method.GET);
 		MessageResponse response = mProtocolCarrier.invokeSync(request,
 				appToken, authToken);
@@ -382,25 +428,50 @@ public class Filestorage {
 			return null;
 		}
 	}
-	
-	private static Intent createIntent(Context ctx, String appName, String appToken, String authToken, String accountName, String appAccountId, StorageType storageType, String host, String service) {
+
+	/**
+	 * update the social data associated to the resource
+	 * 
+	 * @param authToken
+	 * @param rid
+	 * @param resourceId
+	 * @param entityId
+	 *            social entity id to associated to the resource
+	 * @return the updated information about resource
+	 * @throws ConnectionException
+	 * @throws ProtocolException
+	 * @throws SecurityException
+	 */
+	public Metadata updateSocialData(String authToken, String rid,
+			String resourceId, String entityId) throws ConnectionException,
+			ProtocolException, SecurityException {
+		MessageRequest request = new MessageRequest(host, service
+				+ "/updatesocial/" + appName + "/" + resourceId + "/"
+				+ entityId);
+		request.setMethod(Method.PUT);
+		MessageResponse response = mProtocolCarrier.invokeSync(request,
+				appToken, authToken);
+		if (response.getHttpStatus() == 200) {
+			return Utils
+					.convertJSONToObject(response.getBody(), Metadata.class);
+		} else {
+			return null;
+		}
+	}
+
+	private static Intent createIntent(Context ctx, String appName,
+			String appToken, String authToken, String accountName,
+			String appAccountId, StorageType storageType, String host,
+			String service) {
 		Intent intent = new Intent();
-		intent.putExtra(EXTRA_INPUT_APPNAME,
-				appName);
-		intent.putExtra(EXTRA_INPUT_AUTHTOKEN,
-				authToken);
-		intent.putExtra(EXTRA_INPUT_ACCOUNTNAME,
-				accountName);
-		intent.putExtra(EXTRA_INPUT_APPACCOUNTID,
-				appAccountId);
-		intent.putExtra(EXTRA_INPUT_STORAGETYPE,
-				storageType);
-		intent.putExtra(EXTRA_INPUT_APPTOKEN,
-				appToken);
-		intent.putExtra(EXTRA_INPUT_HOST,
-				host);
-		intent.putExtra(EXTRA_INPUT_SERVICE,
-				service);
+		intent.putExtra(EXTRA_INPUT_APPNAME, appName);
+		intent.putExtra(EXTRA_INPUT_AUTHTOKEN, authToken);
+		intent.putExtra(EXTRA_INPUT_ACCOUNTNAME, accountName);
+		intent.putExtra(EXTRA_INPUT_APPACCOUNTID, appAccountId);
+		intent.putExtra(EXTRA_INPUT_STORAGETYPE, storageType);
+		intent.putExtra(EXTRA_INPUT_APPTOKEN, appToken);
+		intent.putExtra(EXTRA_INPUT_HOST, host);
+		intent.putExtra(EXTRA_INPUT_SERVICE, service);
 		return intent;
 	}
 
