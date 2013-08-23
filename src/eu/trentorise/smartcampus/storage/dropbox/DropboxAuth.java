@@ -29,22 +29,19 @@ import com.dropbox.client2.session.AppKeyPair;
 import com.dropbox.client2.session.Session.AccessType;
 import com.dropbox.client2.session.TokenPair;
 
-import eu.trentorise.smartcampus.protocolcarrier.exceptions.ConnectionException;
-import eu.trentorise.smartcampus.protocolcarrier.exceptions.ProtocolException;
-import eu.trentorise.smartcampus.protocolcarrier.exceptions.SecurityException;
+import eu.trentorise.smartcampus.filestorage.client.FilestorageException;
+import eu.trentorise.smartcampus.filestorage.client.model.Account;
+import eu.trentorise.smartcampus.filestorage.client.model.Storage;
+import eu.trentorise.smartcampus.storage.AndroidFilestorage;
 import eu.trentorise.smartcampus.storage.AuthActivity;
 import eu.trentorise.smartcampus.storage.Constants;
-import eu.trentorise.smartcampus.storage.Filestorage;
-import eu.trentorise.smartcampus.storage.model.AppAccount;
-import eu.trentorise.smartcampus.storage.model.Configuration;
-import eu.trentorise.smartcampus.storage.model.StorageType;
-import eu.trentorise.smartcampus.storage.model.UserAccount;
 
 /**
  * Implements the DROPBOX authentication to create user account.
+ * 
  * @see AuthActivity
  * @author raman
- *
+ * 
  */
 public class DropboxAuth extends AuthActivity {
 
@@ -69,8 +66,9 @@ public class DropboxAuth extends AuthActivity {
 	@Override
 	protected void onResume() {
 		super.onResume();
-		if (dApi == null) return;
-		
+		if (dApi == null)
+			return;
+
 		AndroidAuthSession session = dApi.getSession();
 		if (session != null && externalAuthenticationStarted) {
 			if (session.authenticationSuccessful()) {
@@ -78,7 +76,7 @@ public class DropboxAuth extends AuthActivity {
 					// Mandatory call to complete the auth
 					session.finishAuthentication();
 					TokenPair tokens = session.getAccessTokenPair();
-					onAccountAcquired(createUserAccount(tokens));
+					onAccountAcquired(createAccount(tokens));
 				} catch (IllegalStateException e) {
 					Log.e(getClass().getName(),
 							"Exception during dropbox authentication", e);
@@ -91,38 +89,43 @@ public class DropboxAuth extends AuthActivity {
 
 	}
 
-	private UserAccount createUserAccount(TokenPair token) {
-		UserAccount userAccount = new UserAccount();
-		userAccount.setAppAccountId(appAccountId);
-		userAccount.setAppName(appName);
-		userAccount.setStorageType(StorageType.DROPBOX);
+	private Account createAccount(TokenPair token) {
+		Account account = new Account();
+		account.setStorageId(appAccountId);
+		account.setAppId(appId);
+		account.setStorageType(eu.trentorise.smartcampus.filestorage.client.model.StorageType.DROPBOX);
 
-		List<Configuration> confs = Arrays.asList(new Configuration(
-				Constants.USER_KEY_CONF, token.key), new Configuration(
-				Constants.USER_SECRET_CONF, token.secret));
-		userAccount.setConfigurations(confs);
-		return userAccount;
+		List<eu.trentorise.smartcampus.filestorage.client.model.Configuration> confs = Arrays
+				.asList(new eu.trentorise.smartcampus.filestorage.client.model.Configuration(
+						Constants.USER_KEY_CONF, token.key),
+						new eu.trentorise.smartcampus.filestorage.client.model.Configuration(
+								Constants.USER_SECRET_CONF, token.secret));
+		account.setConfigurations(confs);
+		return account;
 	}
 
+	private class SessionAsyncTask extends
+			AsyncTask<Void, Void, AndroidAuthSession> {
 
-	private class SessionAsyncTask extends AsyncTask<Void, Void, AndroidAuthSession> {
-		
 		private Constants.RESULT result = Constants.RESULT.OK;
-		
+
 		@Override
 		protected AndroidAuthSession doInBackground(Void... arg0) {
 			try {
-				List<AppAccount> appAccounts = fileStorage.getAppAccounts(authToken);
+				List<Storage> storages = fileStorage
+						.getStoragesByUser(authToken);
 				String appKey = null;
 				String appSecret = null;
-				for (AppAccount appAccount : appAccounts) {
-					if (appAccount.getId().equals(appAccountId)) {
-						for (Configuration conf : appAccount.getConfigurations()) {
+				for (Storage storage : storages) {
+					if (storage.getId().equals(appAccountId)) {
+						for (eu.trentorise.smartcampus.filestorage.client.model.Configuration conf : storage
+								.getConfigurations()) {
 							if (conf.getName().equals(Constants.APP_KEY_CONF)) {
 								appKey = conf.getValue();
 							}
 
-							if (conf.getName().equals(Constants.APP_SECRET_CONF)) {
+							if (conf.getName()
+									.equals(Constants.APP_SECRET_CONF)) {
 								appSecret = conf.getValue();
 							}
 						}
@@ -131,19 +134,16 @@ public class DropboxAuth extends AuthActivity {
 				}
 
 				if (appKey == null || appSecret == null) {
-					throw new IllegalArgumentException("bad appAccount configurations");
+					throw new IllegalArgumentException(
+							"bad appAccount configurations");
 				}
 
 				AppKeyPair appKeyPair = new AppKeyPair(appKey, appSecret);
 				AndroidAuthSession session = new AndroidAuthSession(appKeyPair,
 						AccessType.APP_FOLDER);
 				return session;
-			} catch (ProtocolException e) {
-				result = Constants.RESULT.PROTOCOL;
-			} catch (ConnectionException e) {
-				result = Constants.RESULT.CONNECTION;
-			} catch (SecurityException e) {
-				result = Constants.RESULT.SECURITY;
+			} catch (FilestorageException e) {
+
 			}
 			return null;
 		}
@@ -156,14 +156,14 @@ public class DropboxAuth extends AuthActivity {
 				dApi.getSession().startAuthentication(DropboxAuth.this);
 			} else {
 				if (result == Constants.RESULT.SECURITY) {
-					onNegativeResult(Filestorage.RESULT_SC_SECURITY_ERROR);
+					onNegativeResult(AndroidFilestorage.RESULT_SC_SECURITY_ERROR);
 				} else if (result == Constants.RESULT.CONNECTION) {
-					onNegativeResult(Filestorage.RESULT_SC_CONNECTION_ERROR);
+					onNegativeResult(AndroidFilestorage.RESULT_SC_CONNECTION_ERROR);
 				} else if (result == Constants.RESULT.PROTOCOL) {
-					onNegativeResult(Filestorage.RESULT_SC_PROTOCOL_ERROR);
+					onNegativeResult(AndroidFilestorage.RESULT_SC_PROTOCOL_ERROR);
 				}
 			}
 		}
-		
+
 	}
 }

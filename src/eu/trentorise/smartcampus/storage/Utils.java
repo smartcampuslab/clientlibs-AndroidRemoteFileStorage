@@ -19,39 +19,39 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
-import org.codehaus.jackson.map.DeserializationConfig;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.SerializationConfig;
-import org.codehaus.jackson.map.introspect.NopAnnotationIntrospector;
-
 public class Utils {
 
-    private static ObjectMapper fullMapper = new ObjectMapper();
-    static {
-        fullMapper.setAnnotationIntrospector(NopAnnotationIntrospector.nopInstance());
-        fullMapper.configure(DeserializationConfig.Feature.READ_ENUMS_USING_TO_STRING, true);
-        fullMapper.configure(DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        fullMapper.configure(DeserializationConfig.Feature.READ_ENUMS_USING_TO_STRING, true);
-
-        fullMapper.configure(SerializationConfig.Feature.WRITE_ENUMS_USING_TO_STRING, true);
-        fullMapper.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
-    }
-
-	
-	public static String convertToJSON(Object data) {
-		try {
-			return fullMapper.writeValueAsString(data);
-		} catch (Exception e) {
-			return "";
-		}
-	}
-	public static <T> T convertJSONToObject(String body, Class<T> cls) {
-		try {
-			return fullMapper.readValue(body, cls);
-		} catch (Exception e) {
-			return null;
-		}
-	}
+	// private static ObjectMapper fullMapper = new ObjectMapper();
+	// static {
+	// fullMapper.setAnnotationIntrospector(NopAnnotationIntrospector.nopInstance());
+	// fullMapper.configure(DeserializationConfig.Feature.READ_ENUMS_USING_TO_STRING,
+	// true);
+	// fullMapper.configure(DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES,
+	// false);
+	// fullMapper.configure(DeserializationConfig.Feature.READ_ENUMS_USING_TO_STRING,
+	// true);
+	//
+	// fullMapper.configure(SerializationConfig.Feature.WRITE_ENUMS_USING_TO_STRING,
+	// true);
+	// fullMapper.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS,
+	// false);
+	// }
+	//
+	//
+	// public static String convertToJSON(Object data) {
+	// try {
+	// return fullMapper.writeValueAsString(data);
+	// } catch (Exception e) {
+	// return "";
+	// }
+	// }
+	// public static <T> T convertJSONToObject(String body, Class<T> cls) {
+	// try {
+	// return fullMapper.readValue(body, cls);
+	// } catch (Exception e) {
+	// return null;
+	// }
+	// }
 
 	public static byte[] read(InputStream is) throws IOException {
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();

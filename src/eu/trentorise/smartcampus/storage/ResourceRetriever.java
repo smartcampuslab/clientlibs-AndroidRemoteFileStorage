@@ -30,32 +30,30 @@ import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.impl.client.DefaultHttpClient;
 
 import android.content.Context;
-import eu.trentorise.smartcampus.protocolcarrier.exceptions.ConnectionException;
-import eu.trentorise.smartcampus.protocolcarrier.exceptions.ProtocolException;
-import eu.trentorise.smartcampus.protocolcarrier.exceptions.SecurityException;
-import eu.trentorise.smartcampus.storage.model.Metadata;
+import eu.trentorise.smartcampus.filestorage.client.FilestorageException;
 import eu.trentorise.smartcampus.storage.model.Resource;
 import eu.trentorise.smartcampus.storage.model.Token;
 
 public abstract class ResourceRetriever {
 
-	private Filestorage filestorage;
+	private AndroidFilestorage filestorage;
 
-	public ResourceRetriever(Context ctx, String appName, String appToken, String host, String service) {
-		filestorage = new Filestorage(ctx, appName, appToken, host, service);
+	public ResourceRetriever(Context ctx, String appName, String appToken,
+			String host, String service) {
+		filestorage = new AndroidFilestorage(host, appName, appToken);
 
 	}
 
 	public Resource getResource(String authToken, String resourceId,
-			Token resourceToken) throws ProtocolException, ConnectionException,
-			SecurityException, ClientProtocolException, IOException {
+			Token resourceToken) throws FilestorageException,
+			ClientProtocolException, IOException {
 
 		Resource resource = new Resource();
 		resource.setContent(getFileContent(resourceToken));
 
-		Metadata metadata = filestorage.getResourceMetadata(authToken,
-				resourceId);
-		resource.setId(metadata.getRid());
+		eu.trentorise.smartcampus.filestorage.client.model.Metadata metadata = filestorage
+				.getResourceMetadataByUser(authToken, resourceId);
+		resource.setId(metadata.getResourceId());
 		resource.setContentType(metadata.getContentType());
 		resource.setName(metadata.getName());
 		return resource;
