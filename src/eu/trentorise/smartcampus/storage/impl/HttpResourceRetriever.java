@@ -22,8 +22,8 @@ import eu.trentorise.smartcampus.storage.ResourceRetriever;
 
 public class HttpResourceRetriever extends ResourceRetriever {
 
-	public HttpResourceRetriever(Context ctx, String appName, String appToken, String host, String service) {
-		super(ctx, appName, appToken, host, service);
+	public HttpResourceRetriever(Context ctx, String appId, String service) {
+		super(ctx, appId, service);
 	}
 
 	@Override

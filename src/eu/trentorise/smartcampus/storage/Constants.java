@@ -19,12 +19,6 @@ public class Constants {
 
 	public static final String MULTIPART_FILE_PARAM = "file";
 
-	public static final String APP_KEY_CONF = "APP_KEY";
-	public static final String APP_SECRET_CONF = "APP_SECRET";
-
-	public static final String USER_KEY_CONF = "USER_KEY";
-	public static final String USER_SECRET_CONF = "USER_SECRET";
-
 	public static final int AUTH_REQUEST_CODE = 1000;
 
 	public enum RESULT {OK, PROTOCOL, CONNECTION, SECURITY};

@@ -1,38 +1,27 @@
 package eu.trentorise.smartcampus.storage;
 
+import java.util.List;
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import eu.trentorise.smartcampus.filestorage.client.Filestorage;
-import eu.trentorise.smartcampus.storage.dropbox.DropboxAuth;
-import eu.trentorise.smartcampus.storage.model.StorageType;
-import eu.trentorise.smartcampus.storage.model.UserAccount;
+import eu.trentorise.smartcampus.filestorage.client.FilestorageException;
+import eu.trentorise.smartcampus.filestorage.client.model.Account;
+import eu.trentorise.smartcampus.filestorage.client.model.Configuration;
+import eu.trentorise.smartcampus.filestorage.client.model.StorageType;
 
 public class AndroidFilestorage extends Filestorage {
 
 	private String appId;
 	private String serverUrl;
-	private String appToken;
 
 	/** Input parameter key: appname */
-	public static final String EXTRA_INPUT_APPNAME = "eu.trentorise.smartcampus.storage.APPNAME";
-	/** Input parameter: apptoken */
-	public static final String EXTRA_INPUT_APPTOKEN = "eu.trentorise.smartcampus.storage.APPTOKEN";
-	/** Input parameter: app account id */
-	public static final String EXTRA_INPUT_APPACCOUNTID = "eu.trentorise.smartcampus.storage.APPACCOUNTID";
-	/** Input parameter: account name */
-	public static final String EXTRA_INPUT_ACCOUNTNAME = "eu.trentorise.smartcampus.storage.ACCOUNTNAME";
+	public static final String EXTRA_INPUT_APPID = "eu.trentorise.smartcampus.storage.APPNAME";
 	/** Input parameter: Platform user auth token */
 	public static final String EXTRA_INPUT_AUTHTOKEN = "eu.trentorise.smartcampus.storage.AUTHTOKEN";
-	/** Input parameter: storage type (e.g., DROPBOX) */
-	public static final String EXTRA_INPUT_STORAGETYPE = "eu.trentorise.smartcampus.storage.STORAGETYPE";
-	/** Input parameter: service host address */
-	public static final String EXTRA_INPUT_HOST = "eu.trentorise.smartcampus.storage.HOST";
 	/** Input parameter: service context path */
 	public static final String EXTRA_INPUT_SERVICE = "eu.trentorise.smartcampus.storage.SERVICE";
-
-	/** Output parameter: user account object */
-	public static final String EXTRA_OUTPUT_USERACCOUNT = "eu.trentorise.smartcampus.storage.USERACCOUNT";
 
 	/** Result code: protocol exception */
 	public static final int RESULT_SC_PROTOCOL_ERROR = 1001;
@@ -40,14 +29,29 @@ public class AndroidFilestorage extends Filestorage {
 	public static final int RESULT_SC_CONNECTION_ERROR = 1002;
 	/** Result code: security exception */
 	public static final int RESULT_SC_SECURITY_ERROR = 1003;
+	/** Output parameter: account ID*/
+	public static final String EXTRA_OUTPUT_ACCOUNT_ID = "eu.trentorise.smartcampus.storage.ACCOUNT_ID";
 
-	public AndroidFilestorage(String serverUrl, String appId, String appToken) {
+	public AndroidFilestorage(String serverUrl, String appId) {
 		super(serverUrl, appId);
 		this.appId = appId;
 		this.serverUrl = serverUrl;
-		this.appToken = appToken;
 	}
 
+	/**
+	 * @param type
+	 * @return true if the specified storage type requires explicit user authorization.
+	 * In this case the account acquisition is performed using {@link #startAuthActivityForResult(Activity, String, String, String, StorageType, int)} method.
+	 */
+	public boolean isAuthenticationRequired(StorageType type) {
+		switch (type) {
+		case DROPBOX:
+			return true;
+		default:
+			return false;
+		}
+	}
+	
 	/**
 	 * Start the storage authentication to create the user account. Returns the
 	 * intent containing the {@link AuthActivity#EXTRA_OUTPUT_USERACCOUNT}
@@ -66,41 +70,37 @@ public class AndroidFilestorage extends Filestorage {
 	 * @param requestCode
 	 * 
 	 */
-	public void startAuthActivityForResult(Activity activity, String authToken,
-			String appAccountName, String storageId, StorageType storageType,
-			int requestCode) {
-		if (appId == null || appAccountName == null || storageId == null
-				|| storageType == null || authToken == null)
+	public void startAuthActivityForResult(Activity activity, String authToken, StorageType storageType, int requestCode) {
+		if (appId == null || storageType == null || authToken == null)
 			throw new IllegalArgumentException(
-					"Intent MUST have setted authToken, appname, accountName, storageId,storageType extras");
+					"Intent MUST have setted authToken, appname, accountName, storageType extras");
 
-		Intent intent = createIntent(activity, appId, appToken, authToken,
-				appAccountName, storageId, storageType, serverUrl, SERVICE);
-
-		switch (storageType) {
-		case DROPBOX:
-			intent.setClass(activity, DropboxAuth.class);
-			intent.putExtras(intent);
-			activity.startActivityForResult(intent, requestCode);
-			break;
-		default:
-			throw new UnsupportedOperationException(
-					"Unsupported storage type: " + storageType);
-		}
+		Intent intent = createIntent(activity, appId, authToken, serverUrl);
+		intent.setClass(activity, AuthActivity.class);
+		intent.putExtras(intent);
+		activity.startActivityForResult(intent, requestCode);
 	}
 
-	private static Intent createIntent(Context ctx, String appId,
-			String appToken, String authToken, String accountName,
-			String storageId, StorageType storageType, String host,
-			String service) {
+	public Account createAccount(String token, String appId, String name, StorageType type, List<Configuration> configurations) throws FilestorageException {
+		if (isAuthenticationRequired(type)) {
+			throw new FilestorageException("Type "+ type + " requires explicit authorization.");
+		}
+		
+		Filestorage storage = new Filestorage(serverUrl, appId);
+		
+		Account a = new Account();
+		a.setAppId(appId);
+		a.setConfigurations(configurations);
+		a.setName(name);
+		a.setStorageType(type);
+		a = storage.createAccountByUser(token, a);
+		return a;
+	}
+	
+	private static Intent createIntent(Context ctx, String appId, String authToken, String service) {
 		Intent intent = new Intent();
-		intent.putExtra(EXTRA_INPUT_APPNAME, appId);
+		intent.putExtra(EXTRA_INPUT_APPID, appId);
 		intent.putExtra(EXTRA_INPUT_AUTHTOKEN, authToken);
-		intent.putExtra(EXTRA_INPUT_ACCOUNTNAME, accountName);
-		intent.putExtra(EXTRA_INPUT_APPACCOUNTID, storageId);
-		intent.putExtra(EXTRA_INPUT_STORAGETYPE, storageType);
-		intent.putExtra(EXTRA_INPUT_APPTOKEN, appToken);
-		intent.putExtra(EXTRA_INPUT_HOST, host);
 		intent.putExtra(EXTRA_INPUT_SERVICE, service);
 		return intent;
 	}
