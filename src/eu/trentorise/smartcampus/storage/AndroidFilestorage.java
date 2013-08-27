@@ -53,13 +53,13 @@ public class AndroidFilestorage extends Filestorage {
 	}
 	
 	/**
-	 * Start the storage authentication to create the user account. Returns the
-	 * intent containing the {@link AuthActivity#EXTRA_OUTPUT_USERACCOUNT}
-	 * parameter with {@link UserAccount} object in case of successful
-	 * authentication or one of {@link Activity#RESULT_CANCELED},
-	 * {@link AuthActivity#RESULT_SC_CONNECTION_ERROR},
-	 * {@link AuthActivity#RESULT_SC_PROTOCOL_ERROR},
-	 * {@link AuthActivity#RESULT_SC_SECURITY_ERROR} response codes.
+	 * Start the storage authorization to create the user account. Returns the
+	 * intent containing the {@link AndroidFilestorage#EXTRA_OUTPUT_ACCOUNT_ID}
+	 * parameter with account ID in case of successful
+	 * authorization or one of {@link Activity#RESULT_CANCELED},
+	 * {@link AndroidFilestorage#RESULT_SC_CONNECTION_ERROR},
+	 * {@link AndroidFilestorage#RESULT_SC_PROTOCOL_ERROR},
+	 * {@link AndroidFilestorage#RESULT_SC_SECURITY_ERROR} response codes.
 	 * 
 	 * @param activity
 	 * @param authToken
@@ -81,6 +81,16 @@ public class AndroidFilestorage extends Filestorage {
 		activity.startActivityForResult(intent, requestCode);
 	}
 
+	/**
+	 * Create an account directly using the specified parameters. Should never be called from the UI thread.
+	 * @param token user access token
+	 * @param appId application ID.
+	 * @param name account name
+	 * @param type {@link StorageType} 
+	 * @param configurations list of {@link Configuration} parameters specific to the storage (if any).
+	 * @return {@link Account} created
+	 * @throws FilestorageException
+	 */
 	public Account createAccount(String token, String appId, String name, StorageType type, List<Configuration> configurations) throws FilestorageException {
 		if (isAuthenticationRequired(type)) {
 			throw new FilestorageException("Type "+ type + " requires explicit authorization.");
