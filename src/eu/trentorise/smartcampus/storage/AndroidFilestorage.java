@@ -160,6 +160,7 @@ public class AndroidFilestorage extends Filestorage {
 					return null;
 				} else {
 					utils.storeUserKeys(account);
+					userKeys = utils.getUserKeys();
 				}
 			}
 			AppKeyPair appKeys = utils.getAppKey();
@@ -181,6 +182,7 @@ public class AndroidFilestorage extends Filestorage {
 					accountId, createSocialData);
 		} catch (IOException e) {
 		} catch (DropboxException e) {
+			e.printStackTrace();
 		} catch (SecurityException e) {
 			e.printStackTrace();
 		} catch (FilestorageException e) {
