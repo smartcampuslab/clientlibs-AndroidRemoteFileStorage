@@ -195,6 +195,7 @@ public class AndroidFilestorage extends Filestorage {
 		Resource res = new Resource();
 		res.setName(dropboxEntry.fileName());
 		res.setContentType(dropboxEntry.mimeType);
+		res.setSize(dropboxEntry.bytes);
 		return res;
 	}
 
