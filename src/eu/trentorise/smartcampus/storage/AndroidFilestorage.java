@@ -9,6 +9,7 @@ import java.util.List;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.util.Log;
 
 import com.dropbox.client2.DropboxAPI;
 import com.dropbox.client2.DropboxAPI.Entry;
@@ -27,6 +28,8 @@ import eu.trentorise.smartcampus.filestorage.client.model.Resource;
 import eu.trentorise.smartcampus.filestorage.client.model.StorageType;
 
 public class AndroidFilestorage extends Filestorage {
+
+	private static final String TAG = "AndroidFilestorage";
 
 	private String appId;
 	private String serverUrl;
@@ -153,18 +156,12 @@ public class AndroidFilestorage extends Filestorage {
 
 		try {
 			DropboxUtils utils = new DropboxUtils(ctx);
-			AccessTokenPair userKeys = utils.getUserKeys();
-			if (userKeys == null) {
-				Account account = getAccountByUser(authToken);
-				if (account == null) {
-					return null;
-				} else {
-					utils.storeUserKeys(account);
-					userKeys = utils.getUserKeys();
-				}
-			}
 			AppKeyPair appKeys = utils.getAppKey();
 			if (appKeys == null) {
+				return null;
+			}
+			AccessTokenPair userKeys = getUserKeys(ctx, authToken);
+			if (userKeys == null) {
 				return null;
 			}
 			AndroidAuthSession sourceSession = new AndroidAuthSession(appKeys,
@@ -182,11 +179,21 @@ public class AndroidFilestorage extends Filestorage {
 					accountId, createSocialData);
 		} catch (IOException e) {
 		} catch (DropboxException e) {
-			e.printStackTrace();
+			Log.e(TAG,
+					String.format(
+							"DropboxException storing resource %s:"
+									+ e.getMessage(),
+							resource.getAbsolutePath()));
 		} catch (SecurityException e) {
-			e.printStackTrace();
+			Log.e(TAG,
+					String.format(
+							"SecurityException storing resource %s:"
+									+ e.getMessage(),
+							resource.getAbsolutePath()));
 		} catch (FilestorageException e) {
-			e.printStackTrace();
+			Log.e(TAG,
+					String.format("FilestorageException storing resource %s:"
+							+ e.getMessage(), resource.getAbsolutePath()));
 		}
 		return null;
 	}
@@ -206,5 +213,29 @@ public class AndroidFilestorage extends Filestorage {
 		intent.putExtra(EXTRA_INPUT_AUTHTOKEN, authToken);
 		intent.putExtra(EXTRA_INPUT_SERVICE, service);
 		return intent;
+	}
+
+	private AccessTokenPair getUserKeys(Context ctx, String authToken) {
+		DropboxUtils utils = new DropboxUtils(ctx);
+		AccessTokenPair userKeys = utils.getUserKeys();
+		if (userKeys == null) {
+			Account account = null;
+			try {
+				account = getAccountByUser(authToken);
+			} catch (SecurityException e) {
+				Log.i(TAG,
+						"SecurityException getting user account:"
+								+ e.getMessage());
+			} catch (FilestorageException e) {
+				Log.i(TAG,
+						"SecurityException getting user account:"
+								+ e.getMessage());
+			}
+			if (account != null) {
+				utils.storeUserKeys(account);
+				userKeys = utils.getUserKeys();
+			}
+		}
+		return userKeys;
 	}
 }
