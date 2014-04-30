@@ -175,8 +175,7 @@ public class AndroidFilestorage extends Filestorage {
 			in.close();
 
 			// create metadata
-			return createMetadataByUser(authToken, toResource(entry),
-					accountId, createSocialData);
+			return createMetadataByUser(authToken, toResource(entry), accountId);
 		} catch (IOException e) {
 		} catch (DropboxException e) {
 			Log.e(TAG,
