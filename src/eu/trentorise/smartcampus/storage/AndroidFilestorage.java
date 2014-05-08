@@ -1,10 +1,14 @@
 package eu.trentorise.smartcampus.storage;
 
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URLConnection;
 import java.util.List;
+
+import org.apache.commons.io.FilenameUtils;
 
 import android.app.Activity;
 import android.content.Context;
@@ -18,6 +22,14 @@ import com.dropbox.client2.exception.DropboxException;
 import com.dropbox.client2.session.AccessTokenPair;
 import com.dropbox.client2.session.AppKeyPair;
 import com.dropbox.client2.session.Session;
+import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
+import com.google.api.client.googleapis.media.MediaHttpUploader;
+import com.google.api.client.http.InputStreamContent;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.JsonFactory;
+import com.google.api.client.json.jackson2.JacksonFactory;
+import com.google.api.services.drive.Drive;
+import com.google.api.services.drive.Drive.Files.Insert;
 
 import eu.trentorise.smartcampus.filestorage.client.Filestorage;
 import eu.trentorise.smartcampus.filestorage.client.FilestorageException;
@@ -70,6 +82,8 @@ public class AndroidFilestorage extends Filestorage {
 	public boolean isAuthenticationRequired(StorageType type) {
 		switch (type) {
 		case DROPBOX:
+			return true;
+		case GDRIVE:
 			return true;
 		default:
 			return false;
@@ -153,30 +167,78 @@ public class AndroidFilestorage extends Filestorage {
 	public Metadata storeOnDropbox(File resource, String authToken,
 			String accountId, boolean createSocialData, Context ctx) {
 		// store
-
+		Account account = null;
+		DropboxUtils utils = null;
+		AppKeyPair appKeys = null;
 		try {
-			DropboxUtils utils = new DropboxUtils(ctx);
-			AppKeyPair appKeys = utils.getAppKey();
-			if (appKeys == null) {
-				return null;
-			}
-			AccessTokenPair userKeys = getUserKeys(ctx, authToken);
-			if (userKeys == null) {
-				return null;
-			}
-			AndroidAuthSession sourceSession = new AndroidAuthSession(appKeys,
-					Session.AccessType.APP_FOLDER, userKeys);
-			DropboxAPI<AndroidAuthSession> sourceClient = new DropboxAPI<AndroidAuthSession>(
-					sourceSession);
-			InputStream in = new FileInputStream(resource);
-			Entry entry = sourceClient.putFile(resource.getName(), in,
-					resource.length(), null, null);
-			sourceSession.unlink();
-			in.close();
+			account = getAccountByUser(authToken);
+		} catch (FilestorageException e) {
+			// TODO Auto-generated catch block
+			Log.e(TAG, "Account not found");
+		}
+		try {
+			switch (account.getStorageType()) {
+			case DROPBOX:
+				utils = new DropboxUtils(ctx);
+				appKeys = utils.getAppKey();
+				if (appKeys == null) {
+					return null;
+				}
+				AccessTokenPair userKeys = getUserKeys(ctx, authToken);
+				if (userKeys == null) {
+					return null;
+				}
+				AndroidAuthSession sourceSession = new AndroidAuthSession(
+						appKeys, Session.AccessType.APP_FOLDER, userKeys);
+				DropboxAPI<AndroidAuthSession> sourceClient = new DropboxAPI<AndroidAuthSession>(
+						sourceSession);
+				InputStream in = new FileInputStream(resource);
+				Entry entry = sourceClient.putFile(resource.getName(), in,
+						resource.length(), null, null);
+				sourceSession.unlink();
+				in.close();
+				// create metadata
+				return createMetadataByUser(authToken, toResource(entry),
+						accountId, createSocialData);
 
-			// create metadata
-			return createMetadataByUser(authToken, toResource(entry),
-					accountId, createSocialData);
+			case GDRIVE:
+				// NON FUNZIONA: DA FIXARE
+				utils = new DropboxUtils(ctx);
+				appKeys = utils.getAppKey();
+				if (appKeys == null) {
+					return null;
+				}
+				JsonFactory jsonFactory = new JacksonFactory();
+				GoogleCredential credential = new GoogleCredential.Builder()
+						.setClientSecrets(appKeys.key, appKeys.secret)
+						.setTransport(new NetHttpTransport())
+						.setJsonFactory(jsonFactory).build();
+				credential.setRefreshToken(account.getConfigurations().get(0)
+						.getValue());
+				Drive service = new Drive.Builder(new NetHttpTransport(),
+						new JacksonFactory(), credential).build();
+				InputStream inputStream = new FileInputStream(resource);
+
+				com.google.api.services.drive.model.File body = new com.google.api.services.drive.model.File();
+				body.setTitle(FilenameUtils.getBaseName(resource.getName()));
+				body.setMimeType(URLConnection
+						.guessContentTypeFromName(resource.getName()));
+				InputStreamContent mediaContent = new InputStreamContent(
+						URLConnection.guessContentTypeFromName(resource
+								.getName()), new BufferedInputStream(
+								inputStream));
+				mediaContent.setLength(resource.length());
+				Insert insert = service.files().insert(body, mediaContent);
+				MediaHttpUploader uploader = insert.getMediaHttpUploader();
+				uploader.setDirectUploadEnabled(false);
+				com.google.api.services.drive.model.File file = insert
+						.execute();
+				return createMetadataByUser(authToken, toResource(file),
+						accountId, createSocialData);
+
+			default:
+				return null;
+			}
 		} catch (IOException e) {
 		} catch (DropboxException e) {
 			Log.e(TAG,
@@ -195,6 +257,15 @@ public class AndroidFilestorage extends Filestorage {
 					String.format("FilestorageException storing resource %s:"
 							+ e.getMessage(), resource.getAbsolutePath()));
 		}
+		return null;
+	}
+
+	private Resource toResource(com.google.api.services.drive.model.File file) {
+		Resource r = new Resource();
+		r.setName(file.getTitle());
+		r.setSize(file.getFileSize());
+		r.setContentType(file.getMimeType());
+		r.setId(file.getId());
 		return null;
 	}
 
