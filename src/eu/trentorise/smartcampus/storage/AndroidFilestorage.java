@@ -197,6 +197,7 @@ public class AndroidFilestorage extends Filestorage {
 						resource.length(), null, null);
 				sourceSession.unlink();
 				in.close();
+
 				// create metadata
 				return createMetadataByUser(authToken, toResource(entry),
 						accountId, createSocialData);
