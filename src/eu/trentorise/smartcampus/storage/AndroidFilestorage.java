@@ -231,7 +231,8 @@ public class AndroidFilestorage extends Filestorage {
 				mediaContent.setLength(resource.length());
 				Insert insert = service.files().insert(body, mediaContent);
 				MediaHttpUploader uploader = insert.getMediaHttpUploader();
-				uploader.setDirectUploadEnabled(false);
+				uploader.setDirectUploadEnabled(true);
+				// insert.execute() non funzione e da exception!
 				com.google.api.services.drive.model.File file = insert
 						.execute();
 				return createMetadataByUser(authToken, toResource(file),
