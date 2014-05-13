@@ -164,7 +164,7 @@ public class AndroidFilestorage extends Filestorage {
 	//
 	// }
 
-	public Metadata storeOnDropbox(File resource, String authToken,
+	public Metadata directStore(File resource, String authToken,
 			String accountId, boolean createSocialData, Context ctx) {
 		// store
 		Account account = null;
@@ -203,7 +203,7 @@ public class AndroidFilestorage extends Filestorage {
 						accountId, createSocialData);
 
 			case GDRIVE:
-				// NON FUNZIONA: DA FIXARE
+
 				utils = new DropboxUtils(ctx);
 				appKeys = utils.getAppKey();
 				if (appKeys == null) {
@@ -267,8 +267,8 @@ public class AndroidFilestorage extends Filestorage {
 		r.setName(file.getTitle());
 		r.setSize(file.getFileSize());
 		r.setContentType(file.getMimeType());
-		r.setId(file.getId());
-		return null;
+		r.setExternalId(file.getId());
+		return r;
 	}
 
 	private Resource toResource(Entry dropboxEntry) {
